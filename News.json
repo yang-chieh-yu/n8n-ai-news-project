@@ -1,0 +1,279 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        -64
+      ],
+      "id": "cafe0ba2-85d4-4e42-8bda-f2f74cb6f612",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://www.ithome.com.tw/rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        -64
+      ],
+      "id": "d2bc1569-3f8e-4209-888d-1ea48f170a14",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "你是一個全自動的新聞監測爬蟲代理。\n你會接收到由 RSS 訂閱源傳來的原始文章資料（可能包含 HTML 標籤）。\n\n請執行以下任務：\n1. **清理與閱讀**：忽略文中的 HTML 標籤，專注於閱讀文字內容。\n2. **關聯性篩選**：判斷這篇文章是否與「AI 人工智慧」、「LLM 模型」、「自動化技術」或「網路安全」、「資安威脅（DDoS/駭客攻擊）」、「雲端基礎設施」高度相關。\n3. **執行動作**：\n- 如果【無關】：請直接回傳 \"SKIP\"。\n- 如果【有關】：請用繁體中文整理出以下資訊：\n\n【標題】:(請填入新聞標題)\n【連結】:(請保留原始文章連結)\n【摘要】:(請用 100 字以內，總結這則新聞的重點技術或事件)\n【關鍵字】:(列出 3 個相關的技術關鍵字)\n\n以下是原始新聞資訊：\n文章連結：{{ $json.link }}\n文章標題：{{ $json.title }}\n文章內文：{{ $json.content }} {{ $json.link }}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -64,
+        -64
+      ],
+      "id": "a7a5d116-dc5a-4441-a0ac-088dec201130",
+      "name": "過濾代理 (Agent_Collector)",
+      "retryOnFail": false,
+      "executeOnce": false,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "modelName": "=models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        176
+      ],
+      "id": "9a46d628-1acf-4f78-aed6-3c5d4f213182",
+      "name": "Agent_Collector",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "WwRLfV4uIE1Jtyy9",
+          "name": "Test2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是一個資深的「IT 產業分析師」。\n請閱讀上一個步驟提供的【摘要】與【關鍵字】。\n\n請針對這則新聞進行深層分析（繁體中文）：\n1. 【技術亮點】：這項技術有什麼創新之處？\n2. 【應用場景】：企業可以用它來做什麼？\n3. 【潛在限制】：目前有什麼缺點或風險？\n請保持客觀、專業的語氣。\n\n以下是上一步驟提供的新聞資訊：\n {{ $json.text }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        240,
+        -64
+      ],
+      "id": "413a8f5f-1888-4e54-b563-332433f5de2e",
+      "name": "分析代理 (Agent_Analyst)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        240,
+        176
+      ],
+      "id": "8129927c-44c8-4db6-a5e8-e72afd748fc6",
+      "name": "Agent_Analyst",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "WwRLfV4uIE1Jtyy9",
+          "name": "Test2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "keep": "lastItems"
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        -64
+      ],
+      "id": "8fc7f532-aa6b-43a8-9a57-494677d99f2f",
+      "name": "Limit1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是「科技週報總編輯」。\n請將前兩個 Agent 的產出（新聞摘要 + 深度分析）整合成一篇結構優美的 Markdown 報告。\n格式要求：\n# [新聞標題]\n> *AI 趨勢快報*\n## 📰 新聞速覽\n(這裡放摘要與原文連結)\n## 💡 深度觀點\n(這裡放技術亮點、應用場景與限制，請用條列式呈現)\n## 🚀 總結\n(一句話結論)\n---\n*由多代理系統自動生成*\n\n以下是需要排版的內容素材：\n【來自 Agent 1 的基本資訊】：\n{{ $('過濾代理 (Agent_Collector)').item.json.text }}\n\n【來自 Agent 2 的深度分析】：\n{{ $json[\"text\"] }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        544,
+        -64
+      ],
+      "id": "5ebbbed5-8994-4d0c-a5ec-fcf9a665b724",
+      "name": "發布代理 (Agent_Editor)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        544,
+        176
+      ],
+      "id": "a2df0ecd-a3bf-41e1-a78d-eba8c128902b",
+      "name": "Agent_Editor",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "WwRLfV4uIE1Jtyy9",
+          "name": "Test2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "text",
+        "options": {
+          "fileName": "Report.md"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        -64
+      ],
+      "id": "8797e725-e29b-411d-8d8c-170d9dffe899",
+      "name": "Convert to File"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Limit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "過濾代理 (Agent_Collector)": {
+      "main": [
+        [
+          {
+            "node": "分析代理 (Agent_Analyst)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent_Collector": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "過濾代理 (Agent_Collector)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分析代理 (Agent_Analyst)": {
+      "main": [
+        [
+          {
+            "node": "發布代理 (Agent_Editor)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent_Analyst": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "分析代理 (Agent_Analyst)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit1": {
+      "main": [
+        [
+          {
+            "node": "過濾代理 (Agent_Collector)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent_Editor": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "發布代理 (Agent_Editor)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "發布代理 (Agent_Editor)": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e5b2a41f-7734-4e55-9ead-e20ed3646e97",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04695fa805d662a7ca811a5d9568e6cc080c07e6ec9f81360f8146eccb701cc6"
+  },
+  "id": "5auqxoLUrGcND379",
+  "tags": []
+}
