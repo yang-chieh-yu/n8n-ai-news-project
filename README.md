@@ -70,3 +70,6 @@ Google Gemini API Key (可至 Google AI Studio 免費申請)
 
 執行完成後，在最後一個 Convert to File 節點即可下載產出的 Report.md 深度報告。
 
+![產出報告](Report.png)
+
+
